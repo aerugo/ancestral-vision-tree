@@ -17,7 +17,7 @@ pub use visual::metrics::VisualAnalyzer;
 use data::FamilyTree;
 use growth::{TreeGrowth, GrowthParams, BranchNode};
 use mesh::generator::{MeshParams, TrackedMeshGenerator};
-use particles::FireflySystem;
+use particles::{FireflySystem, OrbSystem};
 use render::RenderPipeline;
 use interaction::RayPicker;
 use math::{Vec3, Mat4};
@@ -35,6 +35,7 @@ pub fn init() {
 pub struct AncestralVisionTree {
     pipeline: RenderPipeline,
     fireflies: FireflySystem,
+    orbs: OrbSystem,
     picker: RayPicker,
     family_tree: Option<FamilyTree>,
     /// Stored tree structure for animation
@@ -70,11 +71,13 @@ impl AncestralVisionTree {
             .map_err(|e| JsValue::from_str(&e))?;
 
         let fireflies = FireflySystem::new(150);
+        let orbs = OrbSystem::new(50); // Fewer orbs, larger and more prominent
         let picker = RayPicker::new();
 
         Ok(Self {
             pipeline,
             fireflies,
+            orbs,
             picker,
             family_tree: None,
             tree_structure: None,
@@ -136,8 +139,9 @@ impl AncestralVisionTree {
         // Set up picking
         self.picker.set_branches(branch_infos);
 
-        // Configure fireflies based on tree
+        // Configure particle systems based on tree
         self.fireflies.configure_from_tree(&tree);
+        self.orbs.configure_from_tree(&tree);
 
         // Initial particle upload
         let particle_data = self.fireflies.get_particle_data();
@@ -171,11 +175,21 @@ impl AncestralVisionTree {
         // Pass animation progress to pipeline for shader-based animation
         self.pipeline.set_growth_progress(self.growth_animation.get_progress());
 
-        // Update fireflies (scale activity with growth)
-        let firefly_scale = self.growth_animation.get_progress();
-        self.fireflies.set_activity_scale(firefly_scale);
+        // Update particle systems (scale activity with growth)
+        let growth_scale = self.growth_animation.get_progress();
+
+        // Update fireflies
+        self.fireflies.set_activity_scale(growth_scale);
         self.fireflies.update(dt, self.time);
-        let particle_data = self.fireflies.get_particle_data();
+
+        // Update orbs (attracted to high-luminance branches)
+        self.orbs.set_activity_scale(growth_scale);
+        self.orbs.update(dt, self.time);
+
+        // Combine particle data from both systems
+        let mut particle_data = self.fireflies.get_particle_data();
+        particle_data.extend(self.orbs.get_particle_data());
+
         if !particle_data.is_empty() {
             self.pipeline.update_particles(&particle_data);
         }

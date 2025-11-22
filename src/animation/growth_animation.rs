@@ -191,7 +191,7 @@ impl GrowthAnimation {
 
     fn update_branch_states(&mut self) {
         let total_gens = self.max_generation + 1;
-        let gen_window = 1.0 / total_gens as f32;
+        let _gen_window = 1.0 / total_gens as f32;
 
         for state in self.branch_states.values_mut() {
             // Calculate when this branch should start growing
@@ -260,6 +260,7 @@ impl GrowthAnimation {
 }
 
 /// Apply growth animation to a branch node, returning scaled values
+#[allow(dead_code)] // Reserved for mesh animation pass
 pub struct AnimatedBranch {
     pub length_scale: f32,
     pub radius_scale: f32,
@@ -267,6 +268,7 @@ pub struct AnimatedBranch {
     pub visible: bool,
 }
 
+#[allow(dead_code)] // Reserved for mesh animation pass
 impl AnimatedBranch {
     pub fn from_state(state: &BranchAnimState, threshold: f32) -> Self {
         Self {

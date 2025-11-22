@@ -1,0 +1,141 @@
+# Visual test family for biography influence testing
+# Contains people with varying biography lengths to test visual morphing
+
+family:
+  name: "Biography Influence Test Family"
+  root: "center"
+
+people:
+  # Center node with extremely long biography - maximum glow
+  - id: "center"
+    name: "The Great Patriarch"
+    biography: |
+      This is the central figure of the family tree, the one whose life story
+      spans countless pages and generations of memory. Born in a small village
+      at the turn of the century, they witnessed the rise and fall of empires,
+      the birth of new technologies, and the transformation of the world.
+
+      Their early years were marked by hardship and determination. Through
+      sheer willpower and an unwavering belief in the goodness of humanity,
+      they overcame obstacles that would have broken lesser spirits. Every
+      challenge became a stepping stone, every setback a lesson learned.
+
+      The family they built became their greatest legacy. Children, grandchildren,
+      great-grandchildren - each carrying forward the values instilled in them
+      by this remarkable individual. Stories of their wisdom are still told
+      around dinner tables, their sayings have become family proverbs.
+
+      In their twilight years, they became a beacon of hope for all who knew
+      them. Their garden flourished, their door was always open, and their
+      heart remained as warm as the summer sun. When they finally departed
+      this world, they left behind not just a family, but a legacy that would
+      echo through the generations.
+    birth_year: 1900
+    death_year: 1995
+    children:
+      - "long-bio-1"
+      - "medium-bio-1"
+      - "short-bio-1"
+
+  # Long biography - high glow
+  - id: "long-bio-1"
+    name: "First Elder"
+    biography: |
+      The eldest child, carrying forward the family traditions with grace and
+      determination. Their life was a testament to resilience, having weathered
+      many storms both personal and professional. They built a successful
+      business from nothing, raised a family that any parent would be proud of,
+      and gave back to their community in countless ways.
+
+      Their wisdom was sought by many, and their advice always proved sound.
+      Even in difficult times, they maintained their composure and found ways
+      to bring the family together. Their annual gatherings became legendary,
+      bringing relatives from far and wide to celebrate the bonds of kinship.
+    birth_year: 1925
+    death_year: 2010
+    children:
+      - "grandchild-1"
+      - "grandchild-2"
+
+  # Medium biography - moderate glow
+  - id: "medium-bio-1"
+    name: "Second Elder"
+    biography: |
+      A quieter soul, preferring the company of books and gardens to the bustle
+      of society. Yet their gentle presence was felt by all who knew them.
+      They raised their children with patience and love, teaching by example
+      rather than words. Their vegetable garden was the envy of the neighborhood.
+    birth_year: 1928
+    death_year: 2015
+    children:
+      - "grandchild-3"
+
+  # Very short biography - minimal glow
+  - id: "short-bio-1"
+    name: "Third Elder"
+    biography: "The youngest of three."
+    birth_year: 1932
+    children:
+      - "grandchild-4"
+      - "grandchild-5"
+
+  # Grandchildren with varying biographies
+  - id: "grandchild-1"
+    name: "Grandchild One"
+    biography: |
+      An adventurer at heart, this grandchild traveled to every continent
+      before the age of thirty. Their stories of distant lands and exotic
+      cultures captivated family gatherings for decades. They eventually
+      settled down to write their memoirs, which became a family treasure.
+    birth_year: 1950
+    children: []
+
+  - id: "grandchild-2"
+    name: "Grandchild Two"
+    biography: "The quiet one."
+    birth_year: 1953
+
+  - id: "grandchild-3"
+    name: "Grandchild Three"
+    biography: |
+      Following in their parent's footsteps, this grandchild became a master
+      gardener, known throughout the region for their prize-winning roses.
+    birth_year: 1955
+    children:
+      - "great-grandchild-1"
+
+  - id: "grandchild-4"
+    name: "Grandchild Four"
+    biography: "Brief."
+    birth_year: 1960
+
+  - id: "grandchild-5"
+    name: "Grandchild Five"
+    biography: |
+      The family historian, dedicated their life to documenting every branch
+      and leaf of the family tree. Their research uncovered long-lost relatives
+      and stories that had been forgotten for generations.
+    birth_year: 1962
+    children:
+      - "great-grandchild-2"
+      - "great-grandchild-3"
+
+  # Great-grandchildren
+  - id: "great-grandchild-1"
+    name: "Great-Grandchild One"
+    biography: "The newest bloom on this branch of the family tree."
+    birth_year: 1985
+
+  - id: "great-grandchild-2"
+    name: "Great-Grandchild Two"
+    biography: "Full of promise and potential."
+    birth_year: 1990
+
+  - id: "great-grandchild-3"
+    name: "Great-Grandchild Three"
+    biography: |
+      Despite being the youngest, already showing the same determination and
+      warmth that characterized the family founder. A natural leader with
+      a gift for bringing people together, they are carrying forward the
+      family legacy into the modern era with grace and innovation.
+    birth_year: 1995

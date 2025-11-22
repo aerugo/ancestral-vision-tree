@@ -73,6 +73,7 @@ pub struct OrbSystem {
 struct OrbAttractor {
     position: Vec3,
     luminance: f32,
+    #[allow(dead_code)] // Reserved for future hover interactions
     person_id: String,
 }
 

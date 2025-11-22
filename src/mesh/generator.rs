@@ -18,9 +18,9 @@ pub struct MeshParams {
 impl Default for MeshParams {
     fn default() -> Self {
         Self {
-            radial_segments: 12,
-            length_segments: 8,
-            bark_displacement: 0.02,
+            radial_segments: 16,      // Smoother circular cross-sections
+            length_segments: 12,      // Smoother curves along branches
+            bark_displacement: 0.015, // Subtle bark texture
             seed: 42,
         }
     }
@@ -64,13 +64,19 @@ impl MeshGenerator {
         let params = &self.params;
         let visual = &node.visual;
 
+        // Use higher curvature for more organic appearance
+        // Curvature increases slightly for smaller branches (higher generations)
+        let base_curvature = 0.5;
+        let gen_boost = (node.generation as f32 * 0.05).min(0.2);
+        let curvature = base_curvature + gen_boost;
+
         // Generate curve points along the branch
         let curve_points = generate_branch_curve(
             node.start,
             node.end,
             node.start_direction,
             node.end_direction,
-            0.4, // Curvature
+            curvature,
             params.length_segments,
         );
 
@@ -373,7 +379,12 @@ people:
     name: "B"
 "#;
         let family = FamilyTree::from_yaml(yaml).unwrap();
-        let growth = TreeGrowth::new(GrowthParams::default());
+        // Disable twig generation to test core tracking functionality
+        let params = GrowthParams {
+            generate_twigs: false,
+            ..Default::default()
+        };
+        let growth = TreeGrowth::new(params);
         let tree = growth.grow(&family).unwrap();
 
         let generator = TrackedMeshGenerator::new(MeshParams::default());

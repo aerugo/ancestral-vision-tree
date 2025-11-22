@@ -41,7 +41,7 @@ void main() {
 }
 "#;
 
-/// Fragment shader for bioluminescent tree
+/// Fragment shader for natural tree bark
 pub const TREE_FRAGMENT_SHADER: &str = r#"#version 300 es
 precision highp float;
 
@@ -60,58 +60,110 @@ uniform float u_ambient_strength;
 
 out vec4 fragColor;
 
-// Convert HSV to RGB
-vec3 hsv2rgb(vec3 c) {
-    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+// Noise functions for bark texture
+float hash(vec3 p) {
+    p = fract(p * vec3(443.897, 441.423, 437.195));
+    p += dot(p, p.yxz + 19.19);
+    return fract((p.x + p.y) * p.z);
 }
 
-// Simplex noise for organic variation
 float noise(vec3 p) {
-    return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    return mix(
+        mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+            mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+        mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+            mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
+        f.z
+    );
+}
+
+float fbm(vec3 p) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    for(int i = 0; i < 4; i++) {
+        value += amplitude * noise(p);
+        p *= 2.0;
+        amplitude *= 0.5;
+    }
+    return value;
 }
 
 void main() {
     vec3 normal = normalize(v_normal);
     vec3 view_dir = normalize(u_camera_pos - v_world_position);
 
-    // Base color with hue variation
-    float hue = (v_hue / 360.0) + 0.55; // Teal/cyan base shifted by person's hue
-    float saturation = 0.6 + v_luminance * 0.3;
-    float value = 0.3 + v_luminance * 0.5;
-    vec3 base_color = hsv2rgb(vec3(fract(hue), saturation, value));
+    // Natural bark color palette - browns and grays
+    vec3 dark_bark = vec3(0.15, 0.10, 0.07);   // Dark brown
+    vec3 mid_bark = vec3(0.35, 0.25, 0.18);    // Medium brown
+    vec3 light_bark = vec3(0.50, 0.40, 0.30);  // Light brown/tan
+    vec3 highlight = vec3(0.60, 0.55, 0.45);   // Highlights
 
-    // Ambient light
-    vec3 ambient = u_ambient_strength * base_color;
+    // Generate bark texture using position
+    vec3 bark_pos = v_position * 3.0;
 
-    // Fresnel effect for edge glow (bioluminescence)
-    float fresnel = pow(1.0 - max(dot(normal, view_dir), 0.0), 3.0);
-    vec3 glow_color = hsv2rgb(vec3(fract(hue + 0.1), 0.8, 1.0));
-    vec3 edge_glow = fresnel * glow_color * v_glow * 2.0;
+    // Vertical bark grain
+    float vertical_grain = fbm(vec3(bark_pos.x * 2.0, bark_pos.y * 0.5, bark_pos.z * 2.0));
 
-    // Inner bioluminescence - pulsing
-    float pulse = sin(u_time * 2.0 + v_world_position.y * 2.0) * 0.5 + 0.5;
-    float inner_glow = v_luminance * (0.5 + pulse * 0.5);
-    vec3 bio_color = hsv2rgb(vec3(fract(hue + 0.05), 0.9, 1.0));
-    vec3 bioluminescence = bio_color * inner_glow * 0.5;
+    // Horizontal rings (subtle)
+    float rings = sin(bark_pos.y * 8.0 + fbm(bark_pos * 2.0) * 2.0) * 0.5 + 0.5;
+    rings = smoothstep(0.3, 0.7, rings);
 
-    // Subsurface scattering approximation
-    float sss = max(dot(-normal, view_dir), 0.0) * 0.3 * v_luminance;
-    vec3 subsurface = bio_color * sss;
+    // Combine for bark pattern
+    float bark_pattern = mix(vertical_grain, rings, 0.3);
 
-    // Bark texture variation
-    float bark = noise(v_position * 10.0 + u_time * 0.1) * 0.1;
+    // Add some noise variation
+    float detail_noise = fbm(bark_pos * 8.0) * 0.3;
+    bark_pattern = bark_pattern + detail_noise;
 
-    // Combine all lighting
-    vec3 final_color = ambient + edge_glow + bioluminescence + subsurface;
-    final_color *= (1.0 + bark);
+    // Mix bark colors based on pattern
+    vec3 bark_color = mix(dark_bark, mid_bark, bark_pattern);
+    bark_color = mix(bark_color, light_bark, smoothstep(0.5, 0.8, bark_pattern));
 
-    // Add ethereal atmosphere
-    float atmosphere = exp(-length(v_world_position) * 0.1) * 0.2;
-    final_color += vec3(0.1, 0.2, 0.3) * atmosphere;
+    // Add variation based on height (younger bark at top is smoother)
+    float height_factor = clamp(v_world_position.y / 10.0, 0.0, 1.0);
+    bark_color = mix(bark_color, bark_color * 1.1, height_factor * 0.2);
 
-    // HDR tone mapping
+    // Lighting - simple directional light from above-right
+    vec3 light_dir = normalize(vec3(0.5, 1.0, 0.3));
+    float ndotl = max(dot(normal, light_dir), 0.0);
+
+    // Ambient occlusion approximation (darker in crevices)
+    float ao = 0.5 + 0.5 * vertical_grain;
+
+    // Ambient light (sky blue tint from above)
+    vec3 ambient = vec3(0.4, 0.45, 0.5) * u_ambient_strength * ao;
+
+    // Diffuse lighting
+    vec3 diffuse = bark_color * ndotl * 0.8;
+
+    // Subtle rim lighting for depth
+    float rim = pow(1.0 - max(dot(normal, view_dir), 0.0), 3.0);
+    vec3 rim_light = vec3(0.6, 0.55, 0.5) * rim * 0.15;
+
+    // Specular highlight (very subtle for bark)
+    vec3 half_dir = normalize(light_dir + view_dir);
+    float spec = pow(max(dot(normal, half_dir), 0.0), 16.0);
+    vec3 specular = highlight * spec * 0.1;
+
+    // Fill light from below (subtle bounce light)
+    vec3 fill_dir = normalize(vec3(-0.3, -0.5, 0.2));
+    float fill = max(dot(normal, -fill_dir), 0.0) * 0.15;
+    vec3 fill_light = vec3(0.3, 0.25, 0.2) * fill;
+
+    // Combine lighting
+    vec3 final_color = ambient * bark_color + diffuse + rim_light + specular + fill_light;
+
+    // Distance fog (subtle atmospheric perspective)
+    float dist = length(v_world_position - u_camera_pos);
+    float fog = 1.0 - exp(-dist * 0.02);
+    vec3 fog_color = vec3(0.6, 0.65, 0.7);
+    final_color = mix(final_color, fog_color, fog * 0.3);
+
+    // Tone mapping
     final_color = final_color / (final_color + vec3(1.0));
 
     // Gamma correction

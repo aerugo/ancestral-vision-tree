@@ -1,0 +1,88 @@
+family:
+  name: "Test Family"
+  root: "grandparent"
+
+people:
+  - id: "grandparent"
+    name: "Grand Parent"
+    biography: |
+      The founder of our lineage. A person of great wisdom and compassion
+      who laid the foundations for generations to come. Their life was
+      marked by perseverance through hardship and an unwavering belief
+      in the importance of family bonds.
+
+      Known for their storytelling around the evening fire, they ensured
+      that the family history would never be forgotten. Their garden was
+      legendary, producing the finest vegetables in the region.
+    birth_year: 1920
+    death_year: 2000
+    children:
+      - "parent-alice"
+      - "parent-bob"
+
+  - id: "parent-alice"
+    name: "Alice"
+    biography: |
+      First child of the founder. Alice inherited the family's love of
+      gardening and expanded it into a successful nursery business.
+      Her green thumb was matched only by her warm heart.
+    birth_year: 1945
+    death_year: 2015
+    children:
+      - "child-carol"
+      - "child-dave"
+
+  - id: "parent-bob"
+    name: "Bob"
+    biography: "The quiet one. Still waters run deep."
+    birth_year: 1948
+    children:
+      - "child-eve"
+
+  - id: "child-carol"
+    name: "Carol"
+    biography: |
+      Carol took after her grandmother in many ways. A natural leader,
+      she organized family reunions that brought together relatives
+      from across the country. Her potato salad was legendary.
+    birth_year: 1970
+    children:
+      - "grandchild-frank"
+
+  - id: "child-dave"
+    name: "Dave"
+    biography: "Short bio."
+    birth_year: 1973
+    children: []
+
+  - id: "child-eve"
+    name: "Eve"
+    biography: |
+      The family adventurer. Eve traveled to every continent and sent
+      postcards from the most remote locations. Her stories of distant
+      lands and exotic cultures captivated nieces and nephews alike.
+
+      Despite her wanderlust, Eve always returned home for the holidays,
+      bearing gifts and tales that would be recounted for years to come.
+    birth_year: 1975
+    children:
+      - "grandchild-grace"
+      - "grandchild-henry"
+
+  - id: "grandchild-frank"
+    name: "Frank"
+    biography: "The newest generation. Full of promise."
+    birth_year: 2000
+    children: []
+
+  - id: "grandchild-grace"
+    name: "Grace"
+    biography: "Named for her elegant demeanor even as a baby."
+    birth_year: 2005
+    children: []
+
+  - id: "grandchild-henry"
+    name: "Henry"
+    biography: "The curious one. Always asking 'why?'"
+    birth_year: 2008
+    children: []

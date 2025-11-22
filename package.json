@@ -1,0 +1,28 @@
+{
+  "name": "ancestral-vision-tree",
+  "version": "0.1.0",
+  "description": "A 3D family tree visualization engine with bioluminescent aesthetics",
+  "main": "www/bootstrap.js",
+  "scripts": {
+    "build": "wasm-pack build --target web",
+    "build:release": "wasm-pack build --target web --release",
+    "dev": "npm run build && python3 -m http.server 8080",
+    "serve": "python3 -m http.server 8080",
+    "test": "cargo test",
+    "test:wasm": "wasm-pack test --headless --chrome"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aerugo/ancestral-vision-tree.git"
+  },
+  "keywords": [
+    "webgl",
+    "wasm",
+    "rust",
+    "family-tree",
+    "3d-visualization",
+    "bioluminescence"
+  ],
+  "author": "Ancestral Vision Team",
+  "license": "MIT"
+}

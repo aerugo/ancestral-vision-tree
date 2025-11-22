@@ -1,0 +1,27 @@
+# Rust build artifacts
+/target
+Cargo.lock
+
+# WASM build output
+/pkg
+
+# Node modules (if any)
+node_modules
+
+# IDE files
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test output
+/test-output/*.png
+/test-output/*.html
+
+# Environment
+.env
+.env.local

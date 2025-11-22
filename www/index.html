@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ancestral Vision Tree</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <canvas id="canvas"></canvas>
+
+        <!-- Info panel for hovered person -->
+        <div id="info-panel" class="hidden">
+            <h2 id="person-name"></h2>
+            <p id="person-lifespan" class="lifespan"></p>
+            <p id="person-bio" class="biography"></p>
+        </div>
+
+        <!-- Controls help -->
+        <div id="controls-help">
+            <p><strong>Controls:</strong></p>
+            <p>Drag: Orbit camera</p>
+            <p>Scroll: Zoom</p>
+            <p>Shift+Drag: Pan</p>
+            <p>Hover branch: View person info</p>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loading">
+            <div class="spinner"></div>
+            <p>Growing the ancestral tree...</p>
+        </div>
+
+        <!-- YAML input for custom families -->
+        <div id="yaml-input-container" class="hidden">
+            <textarea id="yaml-input" placeholder="Paste your family YAML here..."></textarea>
+            <button id="load-yaml-btn">Load Family</button>
+            <button id="close-yaml-btn">Close</button>
+        </div>
+
+        <button id="custom-family-btn" title="Load custom family">+</button>
+    </div>
+
+    <script type="module" src="bootstrap.js"></script>
+</body>
+</html>

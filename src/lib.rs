@@ -8,14 +8,20 @@ pub mod mesh;
 pub mod particles;
 pub mod render;
 pub mod interaction;
+pub mod visual;
+pub mod animation;
+
+// Re-export visual analyzer for JavaScript
+pub use visual::metrics::VisualAnalyzer;
 
 use data::FamilyTree;
-use growth::{TreeGrowth, GrowthParams};
+use growth::{TreeGrowth, GrowthParams, BranchNode};
 use mesh::generator::{MeshParams, TrackedMeshGenerator};
 use particles::FireflySystem;
 use render::RenderPipeline;
 use interaction::RayPicker;
 use math::{Vec3, Mat4};
+use animation::GrowthAnimation;
 
 /// Initialize panic hook for better error messages
 #[wasm_bindgen(start)]
@@ -31,6 +37,10 @@ pub struct AncestralVisionTree {
     fireflies: FireflySystem,
     picker: RayPicker,
     family_tree: Option<FamilyTree>,
+    /// Stored tree structure for animation
+    tree_structure: Option<BranchNode>,
+    /// Growth animation controller
+    growth_animation: GrowthAnimation,
     time: f32,
     width: i32,
     height: i32,
@@ -67,6 +77,8 @@ impl AncestralVisionTree {
             fireflies,
             picker,
             family_tree: None,
+            tree_structure: None,
+            growth_animation: GrowthAnimation::instant(), // Default to fully grown
             time: 0.0,
             width,
             height,
@@ -81,6 +93,20 @@ impl AncestralVisionTree {
     /// Load family tree from YAML string
     #[wasm_bindgen]
     pub fn load_family(&mut self, yaml: &str) -> Result<(), JsValue> {
+        self.load_family_with_animation(yaml, false)
+    }
+
+    /// Load family tree with optional growth animation
+    #[wasm_bindgen]
+    pub fn load_family_animated(&mut self, yaml: &str, duration: f32) -> Result<(), JsValue> {
+        self.load_family_internal(yaml, true, duration)
+    }
+
+    fn load_family_with_animation(&mut self, yaml: &str, animated: bool) -> Result<(), JsValue> {
+        self.load_family_internal(yaml, animated, 5.0)
+    }
+
+    fn load_family_internal(&mut self, yaml: &str, animated: bool, duration: f32) -> Result<(), JsValue> {
         let family = FamilyTree::from_yaml(yaml)
             .map_err(|e| JsValue::from_str(&e))?;
 
@@ -88,6 +114,15 @@ impl AncestralVisionTree {
         let growth = TreeGrowth::new(GrowthParams::default());
         let tree = growth.grow(&family)
             .ok_or_else(|| JsValue::from_str("Failed to grow tree"))?;
+
+        // Initialize animation
+        if animated {
+            self.growth_animation = GrowthAnimation::new(duration);
+            self.growth_animation.init_from_tree(&tree);
+            self.growth_animation.start();
+        } else {
+            self.growth_animation = GrowthAnimation::instant();
+        }
 
         // Generate mesh with tracking for picking
         let mesh_params = MeshParams::default();
@@ -118,6 +153,8 @@ impl AncestralVisionTree {
                 .map_err(|e| JsValue::from_str(&e))?;
         }
 
+        // Store tree structure for animation updates
+        self.tree_structure = Some(tree);
         self.family_tree = Some(family);
 
         Ok(())
@@ -128,7 +165,15 @@ impl AncestralVisionTree {
     pub fn render(&mut self, dt: f32) {
         self.time += dt;
 
-        // Update fireflies
+        // Update growth animation
+        self.growth_animation.update(dt);
+
+        // Pass animation progress to pipeline for shader-based animation
+        self.pipeline.set_growth_progress(self.growth_animation.get_progress());
+
+        // Update fireflies (scale activity with growth)
+        let firefly_scale = self.growth_animation.get_progress();
+        self.fireflies.set_activity_scale(firefly_scale);
         self.fireflies.update(dt, self.time);
         let particle_data = self.fireflies.get_particle_data();
         if !particle_data.is_empty() {
@@ -239,6 +284,51 @@ impl AncestralVisionTree {
     #[wasm_bindgen]
     pub fn get_hovered_person(&self) -> Option<String> {
         self.hovered_person_id.clone()
+    }
+
+    // === Animation Controls ===
+
+    /// Start the growth animation
+    #[wasm_bindgen]
+    pub fn start_growth_animation(&mut self) {
+        self.growth_animation.start();
+    }
+
+    /// Reset and restart the growth animation
+    #[wasm_bindgen]
+    pub fn reset_growth_animation(&mut self) {
+        self.growth_animation.reset();
+        self.growth_animation.start();
+    }
+
+    /// Complete the growth instantly
+    #[wasm_bindgen]
+    pub fn complete_growth(&mut self) {
+        self.growth_animation.complete_instantly();
+    }
+
+    /// Set growth progress manually (0.0 to 1.0)
+    #[wasm_bindgen]
+    pub fn set_growth_progress(&mut self, progress: f32) {
+        self.growth_animation.set_progress(progress);
+    }
+
+    /// Get current growth progress (0.0 to 1.0)
+    #[wasm_bindgen]
+    pub fn get_growth_progress(&self) -> f32 {
+        self.growth_animation.get_progress()
+    }
+
+    /// Check if growth animation is complete
+    #[wasm_bindgen]
+    pub fn is_growth_complete(&self) -> bool {
+        self.growth_animation.is_complete()
+    }
+
+    /// Check if growth animation is playing
+    #[wasm_bindgen]
+    pub fn is_growth_playing(&self) -> bool {
+        self.growth_animation.is_playing()
     }
 }
 

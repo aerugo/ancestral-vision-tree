@@ -54,8 +54,11 @@ impl MeshGenerator {
         }
 
         // If we have children, generate a joint to smooth the transition
+        // If no children, generate an organic tip for leaf branches
         if !node.children.is_empty() {
             self.generate_joint(node, mesh);
+        } else {
+            self.generate_organic_tip(node, mesh);
         }
     }
 
@@ -197,6 +200,128 @@ impl MeshGenerator {
         let x = x ^ (x >> 13);
         (x as f32 / u32::MAX as f32) * 2.0 - 1.0
     }
+
+    /// Generate organic tapered tip for leaf branches (no children)
+    fn generate_organic_tip(&self, node: &BranchNode, mesh: &mut Mesh) {
+        let visual = &node.visual;
+        let params = &self.params;
+
+        let tip_length = node.end_radius * 1.5;
+        let tip_segments = 4;
+        let direction = node.end_direction;
+        let mut prev_ring_start = None;
+        let start_pos = node.end;
+        let start_radius = node.end_radius;
+
+        for i in 0..tip_segments {
+            let t = i as f32 / (tip_segments - 1) as f32;
+            // Organic taper using smooth curve (not linear)
+            let taper = 1.0 - smooth_step(t);
+            let radius = start_radius * taper * 0.5;
+
+            let offset = direction.scale(tip_length * t);
+            let ring_center = start_pos + offset;
+
+            // Fewer segments for smaller rings
+            let seg_count = (params.radial_segments as f32 * (0.5 + 0.5 * taper)) as usize;
+            let seg_count = seg_count.max(4);
+
+            let ring = create_ring(
+                ring_center,
+                direction,
+                radius.max(0.01),
+                seg_count,
+                1.0 + t * 0.2,
+                visual.glow_intensity * (1.0 + 0.5 * t), // Brighter at tip
+                visual.luminance * (1.0 + 0.3 * t),
+                visual.hue_shift,
+            );
+
+            let ring_start = mesh.add_vertices(ring);
+
+            if let Some((prev_start, prev_seg_count)) = prev_ring_start {
+                // Connect rings even if segment count differs
+                connect_rings_adaptive(mesh, prev_start, ring_start, prev_seg_count, seg_count);
+            }
+
+            prev_ring_start = Some((ring_start, seg_count));
+        }
+
+        // Glowing point at the very tip
+        if let Some((last_ring, seg_count)) = prev_ring_start {
+            let tip = start_pos + direction.scale(tip_length);
+            let tip_vertex = Vertex::new(tip, direction)
+                .with_uv(0.5, 1.2)
+                .with_visual(
+                    visual.glow_intensity * 1.5, // Extra glow at tip
+                    visual.luminance * 1.2,
+                    visual.hue_shift,
+                );
+            let tip_idx = mesh.add_vertices(std::iter::once(tip_vertex));
+
+            for i in 0..seg_count {
+                let next = (i + 1) % seg_count;
+                mesh.add_triangle(
+                    last_ring + i as u32,
+                    last_ring + next as u32,
+                    tip_idx,
+                );
+            }
+        }
+    }
+}
+
+/// Smooth step function for organic tapering
+fn smooth_step(t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// Connect two rings with different segment counts
+fn connect_rings_adaptive(
+    mesh: &mut Mesh,
+    ring1_start: u32,
+    ring2_start: u32,
+    seg1: usize,
+    seg2: usize,
+) {
+    if seg1 == seg2 {
+        connect_rings(mesh, ring1_start, ring2_start, seg1);
+        return;
+    }
+
+    // Handle different segment counts by interpolating
+    let max_seg = seg1.max(seg2);
+
+    for i in 0..max_seg {
+        // Map indices from larger ring to smaller
+        let i1 = if seg1 >= seg2 {
+            i % seg1
+        } else {
+            (i * seg1 / max_seg) % seg1
+        };
+        let i1_next = (i1 + 1) % seg1;
+
+        let i2 = if seg2 >= seg1 {
+            i % seg2
+        } else {
+            (i * seg2 / max_seg) % seg2
+        };
+        let i2_next = (i2 + 1) % seg2;
+
+        let a = ring1_start + i1 as u32;
+        let b = ring1_start + i1_next as u32;
+        let c = ring2_start + i2_next as u32;
+        let d = ring2_start + i2 as u32;
+
+        if a != b && c != d {
+            mesh.add_quad(a, d, c, b);
+        } else if a != b {
+            mesh.add_triangle(a, d, b);
+        } else if c != d {
+            mesh.add_triangle(a, d, c);
+        }
+    }
 }
 
 fn lerp(a: f32, b: f32, t: f32) -> f32 {
@@ -316,11 +441,13 @@ mod tests {
         let generator = MeshGenerator::new(params);
         let mesh = generator.generate_tree(&node);
 
-        // Should have 4 rings of 8 vertices each
-        assert_eq!(mesh.vertex_count(), 4 * 8);
+        // Should have at least 4 rings of 8 vertices each for the branch
+        // Plus additional vertices for the organic tip
+        assert!(mesh.vertex_count() >= 4 * 8, "Expected at least 32 vertices, got {}", mesh.vertex_count());
 
-        // Should have 3 * 8 quads = 3 * 8 * 2 triangles = 48 triangles
-        assert_eq!(mesh.triangle_count(), 3 * 8 * 2);
+        // Should have at least 3 * 8 * 2 triangles for the branch connections
+        // Plus additional triangles for the organic tip
+        assert!(mesh.triangle_count() >= 3 * 8 * 2, "Expected at least 48 triangles, got {}", mesh.triangle_count());
     }
 
     #[test]

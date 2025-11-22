@@ -108,7 +108,7 @@ impl FamilyTree {
     }
 
     /// Iterate over all people in pre-order (root first)
-    pub fn iter_preorder(&self) -> PreorderIter {
+    pub fn iter_preorder(&self) -> PreorderIter<'_> {
         PreorderIter {
             tree: self,
             stack: vec![self.root_id.clone()],

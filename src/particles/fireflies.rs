@@ -55,6 +55,8 @@ pub struct FireflySystem {
     /// High-luminance positions (attract fireflies)
     attractors: Vec<(Vec3, f32)>, // (position, strength)
     seed: u32,
+    /// Activity scale based on tree growth (0.0 = dormant, 1.0 = full activity)
+    activity_scale: f32,
 }
 
 impl FireflySystem {
@@ -68,7 +70,14 @@ impl FireflySystem {
             bounds_max: Vec3::new(3.0, 8.0, 3.0),
             attractors: Vec::new(),
             seed: 42,
+            activity_scale: 1.0,
         }
+    }
+
+    /// Set activity scale based on tree growth progress
+    /// 0.0 = no fireflies active, 1.0 = full activity
+    pub fn set_activity_scale(&mut self, scale: f32) {
+        self.activity_scale = scale.clamp(0.0, 1.0);
     }
 
     /// Configure bounds and attractors from tree
@@ -103,9 +112,13 @@ impl FireflySystem {
 
     /// Update the particle system
     pub fn update(&mut self, dt: f32, time: f32) {
+        // Scale spawn rate and max count by activity
+        let effective_spawn_rate = self.spawn_rate * self.activity_scale;
+        let effective_max = ((self.max_fireflies as f32) * self.activity_scale) as usize;
+
         // Spawn new fireflies
-        self.spawn_accumulator += dt * self.spawn_rate;
-        while self.spawn_accumulator >= 1.0 && self.fireflies.len() < self.max_fireflies {
+        self.spawn_accumulator += dt * effective_spawn_rate;
+        while self.spawn_accumulator >= 1.0 && self.fireflies.len() < effective_max {
             self.spawn_firefly();
             self.spawn_accumulator -= 1.0;
         }

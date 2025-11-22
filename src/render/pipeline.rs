@@ -77,6 +77,9 @@ pub struct RenderPipeline {
     pub camera_position: Vec3,
     pub camera_target: Vec3,
     pub fov: f32,
+
+    // Animation state
+    growth_progress: f32,
 }
 
 impl RenderPipeline {
@@ -143,6 +146,7 @@ impl RenderPipeline {
             camera_position: Vec3::new(0.0, 4.0, 10.0),
             camera_target: Vec3::new(0.0, 3.0, 0.0),
             fov: std::f32::consts::FRAC_PI_4,
+            growth_progress: 1.0, // Start fully grown by default
         };
 
         pipeline.create_framebuffers()?;
@@ -394,5 +398,16 @@ impl RenderPipeline {
         self.width = width;
         self.height = height;
         self.create_framebuffers()
+    }
+
+    /// Set growth animation progress (0.0 to 1.0)
+    /// This affects shader-based visual effects like glow intensity
+    pub fn set_growth_progress(&mut self, progress: f32) {
+        self.growth_progress = progress.clamp(0.0, 1.0);
+    }
+
+    /// Get current growth progress
+    pub fn get_growth_progress(&self) -> f32 {
+        self.growth_progress
     }
 }

@@ -67,52 +67,112 @@ vec3 hsv2rgb(vec3 c) {
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-// Simplex noise for organic variation
+// Improved noise function for organic variation
+float hash(vec3 p) {
+    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+}
+
 float noise(vec3 p) {
-    return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float n = hash(i) * (1.0 - f.x) * (1.0 - f.y) * (1.0 - f.z)
+            + hash(i + vec3(1.0, 0.0, 0.0)) * f.x * (1.0 - f.y) * (1.0 - f.z)
+            + hash(i + vec3(0.0, 1.0, 0.0)) * (1.0 - f.x) * f.y * (1.0 - f.z)
+            + hash(i + vec3(1.0, 1.0, 0.0)) * f.x * f.y * (1.0 - f.z)
+            + hash(i + vec3(0.0, 0.0, 1.0)) * (1.0 - f.x) * (1.0 - f.y) * f.z
+            + hash(i + vec3(1.0, 0.0, 1.0)) * f.x * (1.0 - f.y) * f.z
+            + hash(i + vec3(0.0, 1.0, 1.0)) * (1.0 - f.x) * f.y * f.z
+            + hash(i + vec3(1.0, 1.0, 1.0)) * f.x * f.y * f.z;
+    return n;
+}
+
+// Fractal brownian motion for organic patterns
+float fbm(vec3 p) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    for (int i = 0; i < 4; i++) {
+        value += amplitude * noise(p);
+        p *= 2.0;
+        amplitude *= 0.5;
+    }
+    return value;
 }
 
 void main() {
     vec3 normal = normalize(v_normal);
     vec3 view_dir = normalize(u_camera_pos - v_world_position);
 
-    // Base color with hue variation
-    float hue = (v_hue / 360.0) + 0.55; // Teal/cyan base shifted by person's hue
-    float saturation = 0.6 + v_luminance * 0.3;
-    float value = 0.3 + v_luminance * 0.5;
-    vec3 base_color = hsv2rgb(vec3(fract(hue), saturation, value));
+    // Height-based gradient: warm at base (red/orange), cool at tips (cyan/green)
+    float height_factor = clamp(v_world_position.y / 10.0, 0.0, 1.0);
+
+    // Base hue transitions: red (0.0) -> orange (0.08) -> yellow (0.15) -> green (0.33) -> cyan (0.5)
+    float base_hue = mix(0.02, 0.45, height_factor); // Red to cyan gradient
+    float personal_hue = (v_hue / 360.0) * 0.2; // Person's hue contributes 20%
+    float hue = fract(base_hue + personal_hue);
+
+    // Saturation and value based on luminance
+    float saturation = 0.7 + v_luminance * 0.25;
+    float value = 0.25 + v_luminance * 0.6;
+    vec3 base_color = hsv2rgb(vec3(hue, saturation, value));
 
     // Ambient light
     vec3 ambient = u_ambient_strength * base_color;
 
-    // Fresnel effect for edge glow (bioluminescence)
-    float fresnel = pow(1.0 - max(dot(normal, view_dir), 0.0), 3.0);
-    vec3 glow_color = hsv2rgb(vec3(fract(hue + 0.1), 0.8, 1.0));
-    vec3 edge_glow = fresnel * glow_color * v_glow * 2.0;
+    // Enhanced Fresnel effect for edge glow (bioluminescence)
+    float fresnel = pow(1.0 - max(dot(normal, view_dir), 0.0), 4.0);
+    vec3 glow_color = hsv2rgb(vec3(fract(hue + 0.08), 0.9, 1.0));
+    vec3 edge_glow = fresnel * glow_color * v_glow * 3.0;
 
-    // Inner bioluminescence - pulsing
-    float pulse = sin(u_time * 2.0 + v_world_position.y * 2.0) * 0.5 + 0.5;
-    float inner_glow = v_luminance * (0.5 + pulse * 0.5);
-    vec3 bio_color = hsv2rgb(vec3(fract(hue + 0.05), 0.9, 1.0));
-    vec3 bioluminescence = bio_color * inner_glow * 0.5;
+    // Energy veins - pulsing patterns that flow upward
+    float vein_flow = u_time * 1.5 - v_world_position.y * 0.8;
+    float vein_pattern = sin(vein_flow + v_uv.x * 20.0) * 0.5 + 0.5;
+    vein_pattern *= sin(vein_flow * 0.7 + v_uv.y * 15.0) * 0.5 + 0.5;
+    float veins = pow(vein_pattern, 3.0) * v_luminance;
+    vec3 vein_color = hsv2rgb(vec3(fract(hue + 0.15), 0.95, 1.0));
+    vec3 energy_veins = vein_color * veins * 0.6;
 
-    // Subsurface scattering approximation
-    float sss = max(dot(-normal, view_dir), 0.0) * 0.3 * v_luminance;
-    vec3 subsurface = bio_color * sss;
+    // Inner bioluminescence - multi-frequency pulsing
+    float pulse1 = sin(u_time * 2.0 + v_world_position.y * 2.0) * 0.5 + 0.5;
+    float pulse2 = sin(u_time * 3.3 + v_world_position.y * 1.5 + 1.0) * 0.5 + 0.5;
+    float pulse3 = sin(u_time * 0.7 + v_world_position.y * 3.0 + 2.0) * 0.5 + 0.5;
+    float combined_pulse = (pulse1 + pulse2 * 0.5 + pulse3 * 0.25) / 1.75;
+    float inner_glow = v_luminance * (0.4 + combined_pulse * 0.6);
+    vec3 bio_color = hsv2rgb(vec3(fract(hue + 0.05), 0.85, 1.0));
+    vec3 bioluminescence = bio_color * inner_glow * 0.7;
 
-    // Bark texture variation
-    float bark = noise(v_position * 10.0 + u_time * 0.1) * 0.1;
+    // Subsurface scattering approximation - enhanced
+    float sss = max(dot(-normal, view_dir), 0.0) * 0.4 * v_luminance;
+    vec3 sss_color = hsv2rgb(vec3(fract(hue - 0.05), 0.7, 1.0));
+    vec3 subsurface = sss_color * sss;
+
+    // Organic bark texture using fbm
+    float bark = fbm(v_position * 5.0 + vec3(0.0, u_time * 0.05, 0.0)) * 0.15;
+    float bark_detail = noise(v_position * 20.0) * 0.08;
+
+    // Core glow - strongest at center of branches (based on luminance)
+    float core_intensity = v_luminance * v_luminance * 0.5;
+    vec3 core_color = hsv2rgb(vec3(fract(hue + 0.1), 0.6, 1.0));
+    vec3 core_glow = core_color * core_intensity;
 
     // Combine all lighting
-    vec3 final_color = ambient + edge_glow + bioluminescence + subsurface;
-    final_color *= (1.0 + bark);
+    vec3 final_color = ambient + edge_glow + energy_veins + bioluminescence + subsurface + core_glow;
+    final_color *= (1.0 + bark + bark_detail);
 
-    // Add ethereal atmosphere
-    float atmosphere = exp(-length(v_world_position) * 0.1) * 0.2;
-    final_color += vec3(0.1, 0.2, 0.3) * atmosphere;
+    // Ethereal atmosphere with height-based fog
+    float atmosphere = exp(-length(v_world_position) * 0.08) * 0.15;
+    float height_fog = exp(-v_world_position.y * 0.15) * 0.1;
+    vec3 fog_color = hsv2rgb(vec3(0.55, 0.3, 0.2)); // Soft teal fog
+    final_color += fog_color * (atmosphere + height_fog);
 
-    // HDR tone mapping
-    final_color = final_color / (final_color + vec3(1.0));
+    // Magical sparkle effect on high-luminance areas
+    float sparkle = noise(v_position * 50.0 + u_time * 5.0);
+    sparkle = pow(sparkle, 20.0) * v_luminance * 2.0;
+    final_color += vec3(1.0) * sparkle;
+
+    // HDR tone mapping (ACES approximation)
+    final_color = final_color * (2.51 * final_color + 0.03) / (final_color * (2.43 * final_color + 0.59) + 0.14);
 
     // Gamma correction
     final_color = pow(final_color, vec3(1.0 / 2.2));
